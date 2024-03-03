@@ -1,3 +1,5 @@
+![Icon128](https://github.com/romank3d/PCGCustomInternal/assets/23342836/36645c69-ae17-4392-92f6-9d2ab736fb37)
+
 PCGCustom Plugin for UE5.3
 1. Unpack the contents of the ZIP archive to the engine plugins folder: .../UE_5.3x/Engine/Plugins/Marketplace
 2. Find PCGCustom plugin under the Installed/Other plugins category, turn it on and restart the editor
