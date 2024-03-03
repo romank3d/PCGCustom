@@ -1,4 +1,4 @@
-![Icon128](https://github.com/romank3d/PCGCustomInternal/assets/23342836/36645c69-ae17-4392-92f6-9d2ab736fb37)
+![Icon128](https://github.com/romank3d/PCGCustomNodes/assets/23342836/084d09bf-bcd7-4dbc-839b-55eaae6c506f)
 
 PCGCustom Plugin for UE5.3
 1. Unpack the contents of the ZIP archive to the engine plugins folder: .../UE_5.3x/Engine/Plugins/Marketplace
