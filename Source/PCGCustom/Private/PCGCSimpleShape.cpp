@@ -4,10 +4,12 @@
 
 #include "PCGContext.h"
 #include "PCGPin.h"
+#include "PCGComponent.h"
 #include "Data/PCGPointData.h"
 #include "Helpers/PCGAsync.h"
 #include "Helpers/PCGHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Elements/Metadata/PCGMetadataElementCommon.h"
 
 #define LOCTEXT_NAMESPACE "PCGCSimpleShapeElement"
 
@@ -16,7 +18,6 @@ FPCGElementPtr UPCGCSimpleShapeSettings::CreateElement() const
 	return MakeShared<UPCGCSimpleShapeElement>();
 }
 
-#if WITH_EDITOR
 FName UPCGCSimpleShapeSettings::AdditionalTaskName() const
 {
 	//Set Dynamic Node Name depending on the selected shape
@@ -31,6 +32,8 @@ FName UPCGCSimpleShapeSettings::AdditionalTaskName() const
 }
 
 
+#if WITH_EDITOR
+
 FName UPCGCSimpleShapeSettings::GetDefaultNodeName() const
 { 
 	return FName(TEXT("PCGC Simple Shape")); 
@@ -40,7 +43,23 @@ FText UPCGCSimpleShapeSettings::GetDefaultNodeTitle() const
 {
 	return NSLOCTEXT("PCGCSimpleShapeSettings", "NodeTitle", "PCGC Simple Shape");
 }
+TArray<FPCGPreConfiguredSettingsInfo> UPCGCSimpleShapeSettings::GetPreconfiguredInfo() const
+{
+	return PCGMetadataElementCommon::FillPreconfiguredSettingsInfoFromEnum<EPCGCSImpleShapePointLineMode>();
+}
+
 #endif
+
+void UPCGCSimpleShapeSettings::ApplyPreconfiguredSettings(const FPCGPreConfiguredSettingsInfo& PreconfiguredInfo)
+{
+	if (const UEnum* EnumPtr = StaticEnum<EPCGCSImpleShapePointLineMode>())
+	{
+		if (EnumPtr->IsValidEnumValue(PreconfiguredInfo.PreconfiguredIndex))
+		{
+			Shape = EPCGCSImpleShapePointLineMode(PreconfiguredInfo.PreconfiguredIndex);
+		}
+	}
+}
 
 TArray<FPCGPinProperties> UPCGCSimpleShapeSettings::OutputPinProperties() const
 {
@@ -48,6 +67,14 @@ TArray<FPCGPinProperties> UPCGCSimpleShapeSettings::OutputPinProperties() const
 	TArray<FPCGPinProperties> PinProperties;
 	PinProperties.Emplace(PCGPinConstants::DefaultOutputLabel, EPCGDataType::Point);
 	return PinProperties;
+}
+
+bool UPCGCSimpleShapeElement::IsCacheable(const UPCGSettings* InSettings) const
+{
+	const UPCGCSimpleShapeSettings* Settings = Cast<UPCGCSimpleShapeSettings>(InSettings);
+	check(Settings)
+
+	return Settings->bIsCacheable;
 }
 
 bool UPCGCSimpleShapeElement::ExecuteInternal(FPCGContext* Context) const
@@ -67,33 +94,44 @@ bool UPCGCSimpleShapeElement::ExecuteInternal(FPCGContext* Context) const
 		return true;
 	}
 
+	FVector LocalOffset;
+
+	if (Settings->bLocal) {
+		
+		const UPCGComponent* PCGComponent = Context->SourceComponent.IsValid() ? Context->SourceComponent.Get() : nullptr;
+		const AActor* Self = PCGComponent ? PCGComponent->GetOwner() : nullptr;
+		LocalOffset = Self ? Self->GetActorLocation() : FVector(0.0, 0.0, 0.0);
+	}
+	
+
 	//Get a reference to the output Collections Array (FPCGTaggedData) 
 	TArray<FPCGTaggedData>& Outputs = Context->OutputData.TaggedData;
 
-	//Launch function depending on the selected shape
-	if (Settings->Shape == EPCGCSImpleShapePointLineMode::Point) {
+	switch (Settings->Shape)
+	{
+	case EPCGCSImpleShapePointLineMode::Point:
+		CreatePoint(Context, Settings, Outputs, LocalOffset);
+		return true;
 
-		CreatePoint(Context, Settings, Outputs);
+	case EPCGCSImpleShapePointLineMode::Line:
+		CreateLine(Context, Settings, Outputs, LocalOffset);
+		return true;
+
+	case EPCGCSImpleShapePointLineMode::Rectangle:
+		CreateRectangle(Context, Settings, Outputs, LocalOffset);
+		return true;
+
+	case EPCGCSImpleShapePointLineMode::Circle:
+		CreateCircle(Context, Settings, Outputs, LocalOffset);
+		return true;
+
+	case EPCGCSImpleShapePointLineMode::Grid:
+		CreateGrid(Context, Settings, Outputs, LocalOffset);
+		return true;
+		
+	default:
 		return true;
 	}
-	else if ((Settings->Shape == EPCGCSImpleShapePointLineMode::Line)) {
-
-		CreateLine(Context, Settings, Outputs);
-		return true;
-	}
-	else if ((Settings->Shape == EPCGCSImpleShapePointLineMode::Rectangle)) {
-
-		CreateRectangle(Context, Settings, Outputs);
-		return true;
-	}
-	else if ((Settings->Shape == EPCGCSImpleShapePointLineMode::Circle)) {
-
-		CreateCircle(Context, Settings, Outputs);
-		return true;
-	}
-
-	//out
-	return true;
 }
 
 TArray<FPCGPoint>& UPCGCSimpleShapeElement::GetOutputPoints(TArray<FPCGTaggedData>& Outputs) const {
@@ -118,24 +156,23 @@ TArray<FPCGPoint>& UPCGCSimpleShapeElement::GetOutputPoints(TArray<FPCGTaggedDat
 	return Points;
 }
 
-void UPCGCSimpleShapeElement::CreatePoint(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs) const {
+void UPCGCSimpleShapeElement::CreatePoint(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs, FVector LocalOffset) const {
 
 	//Create Single Point
 
 	//Initialize and get Output Point Data
 	TArray<FPCGPoint>& Points = UPCGCSimpleShapeElement::GetOutputPoints(Outputs);
 
-	//Get Position from Settings
-	FVector Position = Settings->PointSettings.PointOriginPosition;
+	FVector Offset = Settings->OriginLocation + LocalOffset;
 
 	//Create and set the point
 	FPCGPoint Point;
-	Point.Transform.SetLocation(Position);
+	Point.Transform.SetLocation(Offset);
 	Point.SetExtents(Settings->PointExtents);
-	Point.Steepness = 0.5;
-	Point.Density = 1.0;
+	Point.Steepness = Settings->Steepness;
+	Point.Density = Settings->Density;
 
-	Point.Seed = PCGHelpers::ComputeSeed((int)Position.X, (int)Position.Y, (int)Position.Z);
+	Point.Seed = PCGHelpers::ComputeSeed((int)Offset.X, (int)Offset.Y, (int)Offset.Z);
 
 	Point.Transform.SetRotation(FQuat(Settings->PointSettings.PointOrientation));
 
@@ -143,7 +180,7 @@ void UPCGCSimpleShapeElement::CreatePoint(FPCGContext* Context, const UPCGCSimpl
 	Points.Add(Point);
 }
 
-void UPCGCSimpleShapeElement::CreateLine(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs) const {
+void UPCGCSimpleShapeElement::CreateLine(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs, FVector LocalOffset) const {
 
 	//Create A Line Of Points
 
@@ -159,9 +196,9 @@ void UPCGCSimpleShapeElement::CreateLine(FPCGContext* Context, const UPCGCSimple
 		return;
 	}
 
-	const FVector PointExtents = Settings->PointExtents;
 	const bool bIsCoordinateMode = Settings->LineSettings.Mode == EPCGCShapePointLineMode::SetPosition;
 	const bool bAlignPointsToDirection = Settings->LineSettings.bAlignLinePointsToDirection;
+	FVector Offset = Settings->OriginLocation + LocalOffset;
 
 	//Set end points positions and orientation
 	FVector PointA = bIsCoordinateMode ? Settings->LineSettings.LineOriginPosition : FVector::Zero();
@@ -170,14 +207,14 @@ void UPCGCSimpleShapeElement::CreateLine(FPCGContext* Context, const UPCGCSimple
 	FQuat Orientation = FQuat(UKismetMathLibrary::MakeRotFromZ(PointB - PointA));
 
 	//Function That will create points
-	const auto CreatePoint = [Orientation, PointExtents, bAlignPointsToDirection](const FVector Position) {
+	const auto CreatePoint = [Orientation, Settings, bAlignPointsToDirection](const FVector Position) {
 
 		FPCGPoint Point;
 
 		Point.Transform.SetLocation(Position);
-		Point.SetExtents(PointExtents);
-		Point.Steepness = 0.5;
-		Point.Density = 1.0;
+		Point.SetExtents(Settings->PointExtents);
+		Point.Steepness = Settings->Steepness;
+		Point.Density = Settings->Density;
 
 		Point.Seed = PCGHelpers::ComputeSeed((int)Position.X, (int)Position.Y, (int)Position.Z);
 
@@ -193,7 +230,7 @@ void UPCGCSimpleShapeElement::CreateLine(FPCGContext* Context, const UPCGCSimple
 	//If we need to output end points only
 	if (Settings->LineSettings.bLineEndPointsOnly) {
 
-		TArray<FVector> TwoPts = { PointA, PointB };
+		TArray<FVector> TwoPts = { PointA + Offset, PointB + Offset};
 		for (FVector Pt : TwoPts) {
 
 			Points.Emplace(CreatePoint(Pt));
@@ -236,11 +273,13 @@ void UPCGCSimpleShapeElement::CreateLine(FPCGContext* Context, const UPCGCSimple
 	Steps++;
 
 	//Process the points
-	FPCGAsync::AsyncPointProcessing(Context, Steps, Points, [PointA, PointB, Step, DistanceAB, CreatePoint](int32 Index, FPCGPoint& OutPoint)
+	FPCGAsync::AsyncPointProcessing(Context, Steps, Points, [PointA, PointB, Step, DistanceAB, CreatePoint, Offset](int32 Index, FPCGPoint& OutPoint)
 		{
 			//Calculate position of the point, based on the interpolation value between end points
 			double LerpAlpha = (Step * Index) / DistanceAB;
 			FVector Position = FMath::Lerp(PointA, PointB, LerpAlpha);
+
+			Position += Offset;
 
 			//Create and set the point
 			OutPoint = CreatePoint(Position);
@@ -249,16 +288,15 @@ void UPCGCSimpleShapeElement::CreateLine(FPCGContext* Context, const UPCGCSimple
 		});
 }
 
-void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs) const {
+void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs, FVector LocalOffset) const {
 
 	//Create a Rectangle Of Points
 
 	//Get Properties from Settings
-	const FVector PointExtents = Settings->PointExtents;
 	const bool bCornerPointsOnly = Settings->RectangleSettings.bCornerPointsOnly;
 	const bool bOrientToDirection = Settings->RectangleSettings.bOrientToCenter;
 	const bool bOrientCorners = Settings->RectangleSettings.bOrientCorners;
-	const bool bMergeSides = Settings->RectangleSettings.bMergeSides;
+	FVector Offset = Settings->OriginLocation + LocalOffset;
 
 	const double RightAngle = FMath::DegreesToRadians(90);
 
@@ -267,12 +305,28 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 		//out
 		return;
 	}
+	FVector P1;
+	FVector P2;
+	FVector P3;
+	FVector P4;
 
 	//Set position for each corner point
-	FVector P1 = FVector(Settings->RectangleSettings.RectangleLenght / 2.0, Settings->RectangleSettings.RectangleWidth / 2.0, 0.0);
-	FVector P2 = FVector(-P1.X, P1.Y, 0.0);
-	FVector P3 = -P1;
-	FVector P4 = -P2;
+	if (Settings->RectangleSettings.bCenterPivot) {
+
+		P1 = FVector(Settings->RectangleSettings.RectangleLenght / 2.0, Settings->RectangleSettings.RectangleWidth / 2.0, 0.0);
+		P2 = FVector(-P1.X, P1.Y, 0.0);
+		P3 = -P1;
+		P4 = -P2;
+	}
+	else {
+
+		P1 = { 0.0, 0.0, 0.0 };
+		P2 = { Settings->RectangleSettings.RectangleLenght, 0.0 , 0.0 };
+		P3 = { Settings->RectangleSettings.RectangleLenght, Settings->RectangleSettings.RectangleWidth , 0.0 };
+		P4 = { 0.0, Settings->RectangleSettings.RectangleWidth , 0.0 };
+	}
+
+
 
 	const TArray<FVector> Corners = { P1 , P2 , P3 , P4 };
 
@@ -283,14 +337,14 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 		TArray<FPCGPoint>& Points = UPCGCSimpleShapeElement::GetOutputPoints(Outputs);
 
 		//Function That will create points
-		const auto CreatePoint = [PointExtents, bOrientToDirection, RightAngle, &Side](const FVector Position, bool bOrientCorners) {
+		const auto CreatePoint = [Settings, bOrientToDirection, RightAngle, &Side](const FVector Position, bool bOrientCorners) {
 
 			FPCGPoint Point;
 
 			Point.Transform.SetLocation(Position);
-			Point.SetExtents(PointExtents);
-			Point.Steepness = 0.5;
-			Point.Density = 1.0;
+			Point.SetExtents(Settings->PointExtents);
+			Point.Steepness = Settings->Steepness;
+			Point.Density = Settings->Density;
 			Point.Seed = PCGHelpers::ComputeSeed((int)Position.X, (int)Position.Y, (int)Position.Z);
 
 
@@ -311,7 +365,7 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 
 			for (const FVector& Corner : Corners) {
 
-				Points.Emplace(CreatePoint(Corner, bOrientCorners));
+				Points.Emplace(CreatePoint(Corner + Offset, bOrientCorners));
 				Side++;
 			}
 			//out
@@ -319,7 +373,7 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 		}
 
 		//Tag the side output collection if sides are not merged
-		if (!bMergeSides) {
+		if (!Settings->RectangleSettings.bMergeSides) {
 			FPCGTaggedData& Output = Outputs.Last();
 			Output.Tags.Emplace(FString("Side").Append(FString::FromInt(Side)));
 		}
@@ -353,10 +407,8 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 			
 			Steps = DistanceAB / Step;
 
-			if (Step >= 1.0) {
-				if (((int32)DistanceAB % (int32)Step) != 0 && ((int32)DistanceAB % (int32)Step) > (int32)Step / 3) {
-					++Steps;
-				}
+			if ((int32)DistanceAB % FMath::CeilToInt(Step) != 0 && (int32)DistanceAB % FMath::CeilToInt(Step) > (int32)Step / 3) {
+				++Steps;
 			}
 			
 		}
@@ -389,10 +441,8 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 				Step = StepL;
 				Steps = DistanceAB / StepL;
 
-				if (Step >= 1.0) {
-					if (((int32)DistanceAB % (int32)Step) != 0 && ((int32)DistanceAB % (int32)Step) > (int32)Step / 3) {
-						++Steps;
-					}
+				if ((int32)DistanceAB % FMath::CeilToInt(Step) != 0 && (int32)DistanceAB % FMath::CeilToInt(Step) > (int32)Step / 3) {
+					++Steps;
 				}
 			}
 			else {
@@ -407,11 +457,9 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 				Step = StepW;
 				Steps = DistanceAB / StepW;
 
-				if (Step >= 1.0) {
-					if (((int32)DistanceAB % (int32)Step) != 0 && ((int32)DistanceAB % (int32)Step) > (int32)Step / 3) {
+				if ((int32)DistanceAB % FMath::CeilToInt(Step) != 0 && (int32)DistanceAB % FMath::CeilToInt(Step) > (int32)Step / 3) {
 						++Steps;
 					}
-				}
 			}
 			
 		}
@@ -445,11 +493,13 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 			}
 		}
 
+
 		//Process the points
-		FPCGAsync::AsyncPointProcessing(Context, Steps, Points, [CreatePoint, PointA, PointB, Step, DistanceAB, bOrientCorners](int32 Index, FPCGPoint& OutPoint)
+		FPCGAsync::AsyncPointProcessing(Context, Steps, Points, [CreatePoint, PointA, PointB, Step, DistanceAB, bOrientCorners, Offset](int32 Index, FPCGPoint& OutPoint)
 			{
 				double LerpAlpha = (double)(Step * Index) / DistanceAB;
 				FVector Position = FMath::Lerp(PointA, PointB, LerpAlpha);
+				Position += Offset;
 
 				OutPoint = CreatePoint(Position, Index == 0 && bOrientCorners);
 
@@ -458,9 +508,9 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 
 	}
 
-	if (bMergeSides) {
+	if (Settings->RectangleSettings.bMergeSides) {
 
-		//Merge sides in a single collection
+		//Merge sides in a single data set
 
 		TArray<FPCGTaggedData> Sources = Context->OutputData.TaggedData;
 		UPCGPointData* TargetPointData = nullptr;
@@ -474,6 +524,7 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 		TargetTaggedData = &(Outputs.Emplace_GetRef(Source));
 		TargetTaggedData->Data = TargetPointData;
 
+
 		TArray<FPCGPoint>& TargetPoints = TargetPointData->GetMutablePoints();
 
 		for (int32 SourceIndex = 0; SourceIndex < Sources.Num(); ++SourceIndex)
@@ -486,14 +537,14 @@ void UPCGCSimpleShapeElement::CreateRectangle(FPCGContext* Context, const UPCGCS
 	
 }
 
-void UPCGCSimpleShapeElement::CreateCircle(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs) const {
+void UPCGCSimpleShapeElement::CreateCircle(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs, FVector LocalOffset) const {
 
 	//Create A circle Of Points
 
 	//Initialize and get Output Point Data
 	TArray<FPCGPoint>& Points = UPCGCSimpleShapeElement::GetOutputPoints(Outputs);
 
-	//Get Properties from Settings
+	//Get Properties from the Settings
 	const double Radius = Settings->CircleSettings.CircleRadius;
 
 	//Check if Radius is <=0 (it's set to clamp to min in details settings, but can still be overriden to <0)
@@ -504,19 +555,19 @@ void UPCGCSimpleShapeElement::CreateCircle(FPCGContext* Context, const UPCGCSimp
 	}
 
 	const double Step = Settings->CircleSettings.CircleStep;
-	const FVector PointExtents = Settings->PointExtents;
 	const bool bOrientToCenter = Settings->CircleSettings.bOrientToCenter;
+	const FVector Offset = Settings->OriginLocation + LocalOffset;
 	const double RightAngle = FMath::DegreesToRadians(90);
 
 	//Function That will create points
-	const auto CreatePoint = [PointExtents, bOrientToCenter, RightAngle](const FVector Position, double Degree) {
+	const auto CreatePoint = [Settings, bOrientToCenter, RightAngle](const FVector Position, double Degree) {
 
 		FPCGPoint Point;
 
 		Point.Transform.SetLocation(Position);
-		Point.SetExtents(PointExtents);
-		Point.Steepness = 0.5;
-		Point.Density = 1.0;
+		Point.SetExtents(Settings->PointExtents);
+		Point.Steepness = Settings->Steepness;
+		Point.Density = Settings->Density;
 
 		Point.Seed = PCGHelpers::ComputeSeed((int)Position.X, (int)Position.Y, (int)Position.Z);
 
@@ -563,7 +614,7 @@ void UPCGCSimpleShapeElement::CreateCircle(FPCGContext* Context, const UPCGCSimp
 	double DegreeStep = FMath::DegreesToRadians(360.0 / Steps);
 
 	//Process the points
-	FPCGAsync::AsyncPointProcessing(Context, Iterations, Points, [CreatePoint, DegreeStep, Radius](int32 Index, FPCGPoint& OutPoint)
+	FPCGAsync::AsyncPointProcessing(Context, Iterations, Points, [CreatePoint, DegreeStep, Radius, Offset](int32 Index, FPCGPoint& OutPoint)
 		{
 			double Degree = DegreeStep * Index;
 			FVector Position;
@@ -572,11 +623,83 @@ void UPCGCSimpleShapeElement::CreateCircle(FPCGContext* Context, const UPCGCSimp
 			Position.Y = Radius * sin(Degree);
 			Position.Z = 0.0;
 
+			Position += Offset;
+
 			//Create and set the point
 			OutPoint = CreatePoint(Position, Degree);
 
 			return true;
 		});
+}
+
+void UPCGCSimpleShapeElement::CreateGrid(FPCGContext* Context, const UPCGCSimpleShapeSettings* Settings, TArray<FPCGTaggedData>& Outputs, FVector LocalOffset) const {
+
+	//Create A Line Of Points
+
+	//Initialize and get Output Point Data
+	TArray<FPCGPoint>& Points = UPCGCSimpleShapeElement::GetOutputPoints(Outputs);
+
+	//Get Properties from Settings
+	FVector Offset = Settings->OriginLocation + LocalOffset;
+
+	if (Settings->GridSettings.LenghtRows < 1 || Settings->GridSettings.WidthRows < 1 || Settings->GridSettings.HeightRows < 1) {
+
+		PCGE_LOG(Error, GraphAndLog, LOCTEXT("IllegalRowsCount", "Rows Count Should be > 0"));
+		//out
+		return;
+	}
+
+	//Function That will create points
+	const auto CreatePoint = [Settings](const FVector Position) {
+
+		FPCGPoint Point;
+
+		Point.Transform.SetLocation(Position);
+		Point.SetExtents(Settings->PointExtents);
+		Point.Steepness = Settings->Steepness;
+		Point.Density = Settings->Density;
+
+		Point.Seed = PCGHelpers::ComputeSeed((int)Position.X, (int)Position.Y, (int)Position.Z);
+
+		return Point;
+	};
+
+	int32 PointsL = Settings->GridSettings.LenghtRows;
+	int32 PointsW = Settings->GridSettings.WidthRows;
+	int32 PointsH = Settings->GridSettings.HeightRows;
+
+	double StepL = Settings->GridSettings.RowStep;
+	double StepW = Settings->GridSettings.RowStep;
+	double StepH = Settings->GridSettings.RowStep;
+
+	if (Settings->GridSettings.bCenterPivotXY) {
+		Offset += Settings->GridSettings.bCenterPivotZ ? FVector(-((PointsL-1) * StepL) / 2, -((PointsW-1) * StepW) / 2, -((PointsH-1) * StepH) / 2) :
+			FVector(-((PointsL-1) * StepL) / 2, -((PointsW-1) * StepW) / 2, 0.0);
+	}
+
+	int32 Steps = PointsL * PointsW * PointsH;
+
+	//Process the points
+	FPCGAsync::AsyncPointProcessing(Context, Steps, Points, [StepL, StepW, StepH, PointsL, PointsW, PointsH, Steps, CreatePoint, Offset](int32 Index, FPCGPoint& OutPoint)
+		{
+			FVector Position;
+
+	int32 L = Index % PointsL;
+	int32 H = Index / (PointsL * PointsW);
+	int32 W = (Index / PointsL) - (PointsW * H);
+
+	Position.X = StepL * L;
+	Position.Y = StepW * W;
+	Position.Z = StepH * H;
+
+	Position += Offset;
+
+	//Create and set the point
+	OutPoint = CreatePoint(Position);
+
+	return true;
+		});
+
 }
 
 #undef LOCTEXT_NAMESPACE
