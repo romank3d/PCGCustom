@@ -90,24 +90,24 @@ FPCGElementPtr UPCGCGetActorDataExtendedSettings::CreateElement() const
 	return MakeShared<FPCGCGetActorDataExtendedElement>();
 }
 
-EPCGDataType UPCGCGetActorDataExtendedSettings::GetCurrentPinTypes(const UPCGPin* InPin) const
-{
-	check(InPin);
-
-	if (InPin->IsOutputPin())
-	{
-		if (Mode == EPCGGetActorDataMode::GetSinglePoint)
-		{
-			return EPCGDataType::Point;
-		}
-		else if (Mode == EPCGGetActorDataMode::GetDataFromProperty)
-		{
-			return EPCGDataType::Param;
-		}
-	}
-
-	return Super::GetCurrentPinTypes(InPin);
-}
+//EPCGDataType UPCGCGetActorDataExtendedSettings::GetCurrentPinTypes(const UPCGPin* InPin) const
+//{
+//	check(InPin);
+//
+//	if (InPin->IsOutputPin())
+//	{
+//		if (Mode == EPCGGetActorDataMode::GetSinglePoint)
+//		{
+//			return EPCGDataType::Point;
+//		}
+//		else if (Mode == EPCGGetActorDataMode::GetDataFromProperty)
+//		{
+//			return EPCGDataType::Param;
+//		}
+//	}
+//
+//	return Super::GetCurrentPinTypes(InPin);
+//}
 
 TArray<FPCGPinProperties> UPCGCGetActorDataExtendedSettings::OutputPinProperties() const
 {
@@ -116,7 +116,19 @@ TArray<FPCGPinProperties> UPCGCGetActorDataExtendedSettings::OutputPinProperties
 
 	if (bGetSpatialData)
 	{
-		Pins = Super::OutputPinProperties();
+		//Pins = Super::OutputPinProperties();
+
+		if (Mode == EPCGGetActorDataMode::GetSinglePoint)
+		{
+			Pins.Emplace(PCGPinConstants::DefaultOutputLabel, EPCGDataType::Point);
+		}
+		else if (Mode == EPCGGetActorDataMode::GetDataFromProperty)
+		{
+			Pins.Emplace(PCGPinConstants::DefaultOutputLabel, EPCGDataType::Param);
+		}
+		else {
+			Pins.Emplace(PCGPinConstants::DefaultOutputLabel, EPCGDataType::Spatial);
+		}
 
 		if (Mode == EPCGGetActorDataMode::GetDataFromPCGComponent || Mode == EPCGGetActorDataMode::GetDataFromPCGComponentOrParseComponents)
 		{
@@ -371,44 +383,53 @@ void FPCGCGetActorDataExtendedElement::MergeActorsIntoPointData(FPCGContext* Con
 
 		PCGE_LOG(Error, GraphAndLog, LOCTEXT("NotSupportingPartitions", "Action Does Not Support Partition Actors"));
 
-	//	FPCGDataCollection DataToMerge;
-	//	const bool bParseActor = false;
-	//
-	//	for (AActor* Actor : FoundActors)
-	//	{
-	//		if (Actor)
-	//		{
-	//			FPCGDataCollection Collection = UPCGComponent::CreateActorPCGDataCollection(Actor, Context->SourceComponent.Get(), EPCGDataType::Any, bParseActor);
-	//
-	//			for (FPCGTaggedData& Output : Collection.TaggedData) {
-	//				Output.Pin = PCGPinConstants::DefaultOutputLabel;
-	//			}
-	//
-	//			DataToMerge.TaggedData += Collection.TaggedData;
-	//		}
-	//	}
-	//
-	//	 //Perform point data-to-point data merge
-	//	if (DataToMerge.TaggedData.Num() > 1)
-	//	{
-	//		UPCGMergeSettings* MergeSettings = NewObject<UPCGMergeSettings>();
-	//		FPCGMergeElement MergeElement;
-	//		FPCGMergeElement MergeElement = FPCGMergeElement();
-	//		FPCGContext* MergeContext = MergeElement.Initialize(DataToMerge, Context->SourceComponent, nullptr);
-	//		MergeContext->AsyncState.NumAvailableTasks = Context->AsyncState.NumAvailableTasks;
-	//		MergeContext->InputData.TaggedData.Emplace_GetRef().Data = MergeSettings;
-	//	
-	//		while (!MergeElement.Execute(MergeContext))
-	//		
-	//		
-	//	
-	//		Context->OutputData = MergeContext->OutputData;
-	//		delete MergeContext;
-	//	}
-	//	else if (DataToMerge.TaggedData.Num() == 1)
-	//	{
-	//		Context->OutputData.TaggedData = DataToMerge.TaggedData;
-	//	}
+		FPCGDataCollection DataToMerge;
+		const bool bParseActor = false;
+	
+		for (AActor* Actor : FoundActors)
+		{
+			if (Actor)
+			{
+				FPCGDataCollection Collection = UPCGComponent::CreateActorPCGDataCollection(Actor, Context->SourceComponent.Get(), EPCGDataType::Any, bParseActor);
+	
+				for (FPCGTaggedData& Output : Collection.TaggedData) {
+					Output.Pin = PCGPinConstants::DefaultOutputLabel;
+				}
+	
+				DataToMerge.TaggedData += Collection.TaggedData;
+			}
+		}
+	
+		 //Perform point data-to-point data merge
+		if (DataToMerge.TaggedData.Num() > 1)
+		{
+			TArray<FPCGTaggedData>& Sources = DataToMerge.TaggedData;
+			UPCGPointData* TargetPointData = nullptr;
+			FPCGTaggedData* TargetTaggedData = nullptr;
+
+			TArray<FPCGTaggedData>& Outputs = Context->OutputData.TaggedData;
+
+			Outputs.SetNumUninitialized(0);
+
+			const FPCGTaggedData& Source = Sources[0];
+
+			TargetPointData = NewObject<UPCGPointData>();
+			TargetTaggedData = &(Outputs.Emplace_GetRef(Source));
+			TargetTaggedData->Data = TargetPointData;
+
+			TArray<FPCGPoint>& TargetPoints = TargetPointData->GetMutablePoints();
+
+			for (int32 SourceIndex = 0; SourceIndex < Sources.Num(); ++SourceIndex)
+			{
+				const UPCGPointData* SourcePointData = Cast<const UPCGPointData>(Sources[SourceIndex].Data);
+
+				TargetPoints.Append(SourcePointData->GetPoints());
+			}
+		}
+		else if (DataToMerge.TaggedData.Num() == 1)
+		{
+			Context->OutputData.TaggedData = DataToMerge.TaggedData;
+		}
 	}
 }
 

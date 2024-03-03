@@ -36,7 +36,7 @@ public:
 	virtual void GetTrackedActorKeys(FPCGActorSelectionKeyToSettingsMap& OutKeysToSettings, TArray<TObjectPtr<const UPCGGraph>>& OutVisitedGraphs) const override;
 	virtual bool HasDynamicPins() const override { return true; }
 #endif
-	virtual EPCGDataType GetCurrentPinTypes(const UPCGPin* InPin) const override;
+//	virtual EPCGDataType GetCurrentPinTypes(const UPCGPin* InPin) const override;
 
 	virtual FName AdditionalTaskName() const override;
 
