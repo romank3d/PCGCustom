@@ -48,7 +48,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings)
 		bool bDiffMetadata = true;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (PCG_Overridable))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (InlineEditConditionToggle, PCG_Overridable))
 		bool bUsingCustomTags = false;
 
 	//Number of tags, specified after mandatory "Priority" and "ActorID" tags

@@ -59,7 +59,7 @@ bool FPCGCDifferenceByTagElement::ExecuteInternal(FPCGContext* Context) const
 		const UPCGSpatialData* InputSpatialData = Cast<UPCGSpatialData>(Input.Data);
 
 		//Pass set as is, if there are no tags, not enough tags, or data is not spatial
-		if (Input.Tags.IsEmpty() || Input.Tags.Num() < 2 || !InputSpatialData) {
+		if (Input.Tags.IsEmpty() || Input.Tags.Num() < 2 + NumCustomTags || !InputSpatialData) {
 			Outputs.Add(Input);
 			continue;
 		}
@@ -82,7 +82,7 @@ bool FPCGCDifferenceByTagElement::ExecuteInternal(FPCGContext* Context) const
 			const UPCGSpatialData* InputInnerSpatialData = Cast<UPCGSpatialData>(InputInner.Data);
 
 			//Pass this set, if there are no tags, not enough tags, or data is not spatial
-			if (InputInner.Tags.IsEmpty() || InputInner.Tags.Num() < 2 || !InputInnerSpatialData) {
+			if (InputInner.Tags.IsEmpty() || InputInner.Tags.Num() < 2 + NumCustomTags || !InputInnerSpatialData) {
 				continue;
 			}
 

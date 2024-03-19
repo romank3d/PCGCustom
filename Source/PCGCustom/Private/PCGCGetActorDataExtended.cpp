@@ -30,6 +30,7 @@ void UPCGCGetActorDataExtendedSettings::GetTrackedActorKeys(FPCGActorSelectionKe
 
 	//FPCGActorSelectionKey Key = static_cast<FPCGActorSelectionKey>(ActorSelector.GetAssociatedKey());
 	FPCGActorSelectionKeyExtended Key = ActorSelector.GetAssociatedKey();
+	
 	if (Mode == EPCGGetActorDataMode::GetDataFromPCGComponent || Mode == EPCGGetActorDataMode::GetDataFromPCGComponentOrParseComponents)
 	{
 		Key.SetExtraDependency(UPCGComponent::StaticClass());
@@ -90,24 +91,6 @@ FPCGElementPtr UPCGCGetActorDataExtendedSettings::CreateElement() const
 	return MakeShared<FPCGCGetActorDataExtendedElement>();
 }
 
-//EPCGDataType UPCGCGetActorDataExtendedSettings::GetCurrentPinTypes(const UPCGPin* InPin) const
-//{
-//	check(InPin);
-//
-//	if (InPin->IsOutputPin())
-//	{
-//		if (Mode == EPCGGetActorDataMode::GetSinglePoint)
-//		{
-//			return EPCGDataType::Point;
-//		}
-//		else if (Mode == EPCGGetActorDataMode::GetDataFromProperty)
-//		{
-//			return EPCGDataType::Param;
-//		}
-//	}
-//
-//	return Super::GetCurrentPinTypes(InPin);
-//}
 
 TArray<FPCGPinProperties> UPCGCGetActorDataExtendedSettings::OutputPinProperties() const
 {
@@ -116,7 +99,6 @@ TArray<FPCGPinProperties> UPCGCGetActorDataExtendedSettings::OutputPinProperties
 
 	if (bGetSpatialData)
 	{
-		//Pins = Super::OutputPinProperties();
 
 		if (Mode == EPCGGetActorDataMode::GetSinglePoint)
 		{
@@ -760,7 +742,6 @@ void FPCGCGetActorDataExtendedElement::GetActorComponentsAsPoints(FPCGContext* C
 				continue;
 			}
 		}
-		
 		
 		FPCGPoint Point;
 		Point.Transform = PrimitiveComponent->GetComponentTransform();

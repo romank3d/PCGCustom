@@ -7,9 +7,10 @@
 #include "PCGCSimpleShape.generated.h"
 
 UENUM()
-enum class EPCGCSImpleShapePointLineMode : uint8
+enum class EPCGCSImpleShapePointLineMode : uint16
 {
 	//Shape Modes
+	Shapes UMETA(Hidden),
 	Point,
 	Line,
 	Rectangle,
@@ -168,7 +169,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (ClampMin = "0.1", PCG_Overridable))
 		double CircleRadius = 200.0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (PCG_NotOverridable, EditCondition = "!bLineEndPointsOnly", EditConditionHides))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (PCG_NotOverridable))
 		EPCGCInterpolationMode Interpolation = EPCGCInterpolationMode::Step;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (EditCondition = "Interpolation == EPCGCInterpolationMode::Step", EditConditionHides, ClampMin = "0.1", PCG_Overridable))
@@ -241,7 +242,7 @@ protected:
 public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings)
-		EPCGCSImpleShapePointLineMode  Shape = EPCGCSImpleShapePointLineMode::Point;
+		EPCGCSImpleShapePointLineMode  Shape;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (EditCondition = "Shape == EPCGCSImpleShapePointLineMode::Point", EditConditionHides, PCG_Overridable))
 		FPCGCSinglePointSettings PointSettings;

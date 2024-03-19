@@ -40,7 +40,7 @@ struct PCGCUSTOM_API FPCGActorSelectionKeyExtended : FPCGActorSelectionKey
 	
 	//bool operator==(const FPCGActorSelectionKeyExtended& InOther) const;
 	
-	friend uint32 GetTypeHash(const FPCGActorSelectionKeyExtended& In);
+	//friend uint32 GetTypeHash(const FPCGActorSelectionKeyExtended& In);
 	bool IsMatching(const AActor* InActor, const UPCGComponent* InComponent) const;
 	
 	void SetExtraDependency(const UClass* InExtraDependency);

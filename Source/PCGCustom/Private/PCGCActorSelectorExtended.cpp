@@ -259,7 +259,7 @@ bool FPCGActorSelectionKeyExtended::IsMatching(const AActor* InActor, const UPCG
 		return false;
 	}
 }
-
+#if WITH_EDITOR
 bool FPCGActorSelectionKey::operator==(const FPCGActorSelectionKey& InOther) const
 {
 	if (ActorFilter != InOther.ActorFilter || Selection != InOther.Selection || OptionalExtraDependency != InOther.OptionalExtraDependency)
@@ -294,7 +294,7 @@ uint32 GetTypeHash(const FPCGActorSelectionKey& In)
 	return HashResult;
 }
 
-#if WITH_EDITOR
+
 FText FPCGCActorSelectorExtendedSettings::GetTaskNameSuffix() const
 {
 	if (ActorFilterCustom == EPCGActorFilterExtended::AllWorldActors)

@@ -45,7 +45,7 @@ FText UPCGCSimpleShapeSettings::GetDefaultNodeTitle() const
 }
 TArray<FPCGPreConfiguredSettingsInfo> UPCGCSimpleShapeSettings::GetPreconfiguredInfo() const
 {
-	return PCGMetadataElementCommon::FillPreconfiguredSettingsInfoFromEnum<EPCGCSImpleShapePointLineMode>();
+	return PCGMetadataElementCommon::FillPreconfiguredSettingsInfoFromEnum<EPCGCSImpleShapePointLineMode>({ EPCGCSImpleShapePointLineMode::Shapes });
 }
 
 #endif
