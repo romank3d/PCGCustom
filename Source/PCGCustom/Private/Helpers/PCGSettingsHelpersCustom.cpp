@@ -249,7 +249,7 @@ namespace PCGSettingsHelpersCustom
 		NewParamsPin->Node = InOutNode;
 		NewParamsPin->Properties.AllowedTypes = EPCGDataType::Param;
 		NewParamsPin->Properties.Label = PCGPinConstants::DefaultParamsLabel;
-		NewParamsPin->Properties.bAllowMultipleConnections = true;
+		//NewParamsPin->Properties.bAllowMultipleConnections = true;
 		NewParamsPin->Properties.bAllowMultipleData = true;
 		InputPins.Add(NewParamsPin);
 

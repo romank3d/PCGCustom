@@ -11,6 +11,8 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Elements/Metadata/PCGMetadataElementCommon.h"
 
+#include "GameFramework/Actor.h"
+
 #define LOCTEXT_NAMESPACE "PCGCSimpleShapeElement"
 
 FPCGElementPtr UPCGCSimpleShapeSettings::CreateElement() const

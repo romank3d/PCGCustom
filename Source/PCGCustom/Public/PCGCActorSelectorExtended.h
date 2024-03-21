@@ -28,7 +28,7 @@ enum class EPCGActorFilterExtended : uint8
 };
 
 
-struct PCGCUSTOM_API FPCGActorSelectionKeyExtended : FPCGActorSelectionKey
+struct PCGCUSTOM_API FPCGActorSelectionKeyExtended : FPCGSelectionKey
 {
 	FPCGActorSelectionKeyExtended() = default;
 
@@ -118,7 +118,7 @@ struct PCGCUSTOM_API FPCGCActorSelectorExtendedSettings
 #endif
 
 	FPCGActorSelectionKeyExtended GetAssociatedKey() const;
-	static FPCGCActorSelectorExtendedSettings ReconstructFromKey(const FPCGActorSelectionKey& InKey);
+	static FPCGCActorSelectorExtendedSettings ReconstructFromKey(const FPCGSelectionKey& InKey);
 };
 
 namespace PCGCActorSelectorExtended

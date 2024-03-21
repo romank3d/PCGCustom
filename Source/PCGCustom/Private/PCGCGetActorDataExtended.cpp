@@ -3,18 +3,23 @@
 
 #include "PCGCGetActorDataExtended.h"
 
+#include "PCGActorAndComponentMapping.h"
 #include "PCGComponent.h"
 #include "PCGModule.h"
-#include "GameFramework/Actor.h"
+#include "PCGSubsystem.h"
 #include "Data/PCGPointData.h"
+#include "PCGParamData.h"
 #include "Data/PCGSpatialData.h"
 #include "Data/PCGVolumeData.h"
+#include "Elements/PCGMergeElement.h"
 #include "Helpers/PCGHelpers.h"
-#include "PCGSubsystem.h"
-#include "Algo/AnyOf.h"
-#include "PCGPin.h"
-#include "UObject/Package.h"
 #include "Helpers/PCGSettingsHelpersCustom.h"
+
+#include "Algo/AnyOf.h"
+#include "GameFramework/Actor.h"
+#include "UObject/Package.h"
+#include "Internationalization/Text.h"
+
 #include "Metadata/Accessors/PCGAttributeAccessorHelpers.h"
 #include "Components/BillboardComponent.h"
 
@@ -24,14 +29,115 @@
 
 #define LOCTEXT_NAMESPACE "PCGCGetActorDataExtendedElement"
 
-#if WITH_EDITOR
-void UPCGCGetActorDataExtendedSettings::GetTrackedActorKeys(FPCGActorSelectionKeyToSettingsMap& OutKeysToSettings, TArray<TObjectPtr<const UPCGGraph>>& OutVisitedGraphs) const
+namespace PCGDataFromActorConstants
 {
+	static const FName SinglePointPinLabel = TEXT("Single Point");
+	static const FString PCGComponentDataGridSizeTagPrefix = TEXT("PCG_GridSize_");
+}
 
-	//FPCGActorSelectionKey Key = static_cast<FPCGActorSelectionKey>(ActorSelector.GetAssociatedKey());
+namespace PCGDataFromActorHelpers
+{
+	/**
+	 * Get the PCG Components associated with an actor. Optionally, also search for any local components associated with components
+	 * on the actor using the 'bGetLocalComponents' flag. By default, gets data on all grids, but alternatively you can provide a
+	 * set of 'AllowedGrids' to match against.
+	 *
+	 * If 'bMustOverlap' is true, it will only collect components which overlap with the given 'OverlappingBounds'. Note that this
+	 * overlap does not include bounds which are only touching, with no overlapping volume.
+	 */
+	static TInlineComponentArray<UPCGComponent*, 1> GetPCGComponentsFromActor(
+		AActor* Actor,
+		UPCGSubsystem* Subsystem,
+		bool bGetLocalComponents = false,
+		bool bGetAllGrids = true,
+		int32 AllowedGrids = (int32)EPCGHiGenGrid::Uninitialized,
+		bool bMustOverlap = false,
+		const FBox& OverlappingBounds = FBox())
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(FPCGDataFromActorElement::GetPCGComponentsFromActor);
+
+		TInlineComponentArray<UPCGComponent*, 1> PCGComponents;
+
+		if (!Actor || !Subsystem)
+		{
+			return PCGComponents;
+		}
+
+		Actor->GetComponents(PCGComponents);
+
+		if (bMustOverlap)
+		{
+			// Remove actor components that do not overlap the source bounds.
+			// Note: This assumes that a local component always lies inside the bounds of its original component,
+			// which is true at the time of writing, but may not always be the case (e.g. "truly" unbounded execution).
+			for (int I = PCGComponents.Num() - 1; I >= 0; I--)
+			{
+				const FBox ComponentBounds = PCGComponents[I]->GetGridBounds();
+
+				// We reject overlaps with zero volume instead of simply checking Intersect(...) to avoid bounds which touch but do not overlap.
+				if (OverlappingBounds.Overlap(ComponentBounds).GetVolume() <= 0)
+				{
+					PCGComponents.RemoveAtSwap(I);
+				}
+			}
+		}
+
+		TArray<UPCGComponent*> LocalComponents;
+
+		if (bGetLocalComponents)
+		{
+			auto AddComponent = [&LocalComponents, bGetAllGrids, AllowedGrids](UPCGComponent* LocalComponent)
+			{
+				if (bGetAllGrids || (AllowedGrids & (int32)LocalComponent->GetGenerationGrid()))
+				{
+					LocalComponents.Add(LocalComponent);
+				}
+			};
+
+			// Collect the local components for each actor PCG component.
+			for (UPCGComponent* Component : PCGComponents)
+			{
+				if (Component && Component->IsPartitioned())
+				{
+					if (bMustOverlap)
+					{
+						Subsystem->ForAllRegisteredIntersectingLocalComponents(Component, OverlappingBounds, AddComponent);
+					}
+					else
+					{
+						Subsystem->ForAllRegisteredLocalComponents(Component, AddComponent);
+					}
+				}
+			}
+		}
+
+		// Remove the actor's PCG components if they aren't on an allowed grid size.
+		// Implementation note: We delay removing these components until now because they may have had local components on an allowed grid size.
+		if (!bGetAllGrids)
+		{
+			for (int I = PCGComponents.Num() - 1; I >= 0; I--)
+			{
+				if (!(AllowedGrids & (int32)PCGComponents[I]->GetGenerationGridSize()))
+				{
+					PCGComponents.RemoveAtSwap(I);
+				}
+			}
+		}
+
+		if (bGetLocalComponents)
+		{
+			PCGComponents.Append(LocalComponents);
+		}
+
+		return PCGComponents;
+	}
+}
+
+#if WITH_EDITOR
+void UPCGCGetActorDataExtendedSettings::GetStaticTrackedKeys(FPCGSelectionKeyToSettingsMap& OutKeysToSettings, TArray<TObjectPtr<const UPCGGraph>>& OutVisitedGraphs) const
+{
 	FPCGActorSelectionKeyExtended Key = ActorSelector.GetAssociatedKey();
-	
-	if (Mode == EPCGGetActorDataMode::GetDataFromPCGComponent || Mode == EPCGGetActorDataMode::GetDataFromPCGComponentOrParseComponents)
+	if (Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponent || Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponentOrParseComponents)
 	{
 		Key.SetExtraDependency(UPCGComponent::StaticClass());
 	}
@@ -77,12 +183,12 @@ void UPCGCGetActorDataExtendedSettings::PostLoad()
 	}
 }
 
-FName UPCGCGetActorDataExtendedSettings::AdditionalTaskName() const
+FString UPCGCGetActorDataExtendedSettings::GetAdditionalTitleInformation() const
 {
 #if WITH_EDITOR
-	return ActorSelector.GetTaskName(GetDefaultNodeTitle());
+	return ActorSelector.GetTaskNameSuffix().ToString();
 #else
-	return Super::AdditionalTaskName();
+	return Super::GetAdditionalTitleInformation();
 #endif
 }
 
@@ -100,11 +206,11 @@ TArray<FPCGPinProperties> UPCGCGetActorDataExtendedSettings::OutputPinProperties
 	if (bGetSpatialData)
 	{
 
-		if (Mode == EPCGGetActorDataMode::GetSinglePoint)
+		if (Mode == EPCGGetDataFromActorModeExtended::GetSinglePoint)
 		{
 			Pins.Emplace(PCGPinConstants::DefaultOutputLabel, EPCGDataType::Point);
 		}
-		else if (Mode == EPCGGetActorDataMode::GetDataFromProperty)
+		else if (Mode == EPCGGetDataFromActorModeExtended::GetDataFromProperty)
 		{
 			Pins.Emplace(PCGPinConstants::DefaultOutputLabel, EPCGDataType::Param);
 		}
@@ -112,7 +218,7 @@ TArray<FPCGPinProperties> UPCGCGetActorDataExtendedSettings::OutputPinProperties
 			Pins.Emplace(PCGPinConstants::DefaultOutputLabel, EPCGDataType::Spatial);
 		}
 
-		if (Mode == EPCGGetActorDataMode::GetDataFromPCGComponent || Mode == EPCGGetActorDataMode::GetDataFromPCGComponentOrParseComponents)
+		if (Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponent || Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponentOrParseComponents)
 		{
 			for (const FName& Pin : ExpectedPins)
 			{
@@ -213,7 +319,7 @@ bool FPCGCGetActorDataExtendedElement::ExecuteInternal(FPCGContext* InContext) c
 		if (Settings->bGetSpatialData)
 		{
 			// If we're looking for PCG component data, we might have to wait for it.
-			if (Settings->Mode == EPCGGetActorDataMode::GetDataFromPCGComponent || Settings->Mode == EPCGGetActorDataMode::GetDataFromPCGComponentOrParseComponents)
+			if (Settings->Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponent || Settings->Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponentOrParseComponents)
 			{
 				TArray<FPCGTaskId> WaitOnTaskIds;
 				for (AActor* Actor : Context->FoundActors)
@@ -284,7 +390,7 @@ void FPCGCGetActorDataExtendedElement::ProcessActors(FPCGContext* Context, const
 	{
 		// Special case:
 		// If we're asking for single point with the merge single point data, we can do a more efficient process
-		if (Settings->Mode == EPCGGetActorDataMode::GetSinglePoint && Settings->bMergeSinglePointData && FoundActors.Num() > 1)
+		if (Settings->Mode == EPCGGetDataFromActorModeExtended::GetSinglePoint && Settings->bMergeSinglePointData && FoundActors.Num() > 1)
 		{
 			MergeActorsIntoPointData(Context, Settings, FoundActors);
 		}
@@ -432,7 +538,7 @@ void FPCGCGetActorDataExtendedElement::ProcessActor(FPCGContext* Context, const 
 
 	const bool bCanGetDataFromComponent = (FoundActor != ThisOwner);
 
-	if (bCanGetDataFromComponent && (Settings->Mode == EPCGGetActorDataMode::GetDataFromPCGComponent || Settings->Mode == EPCGGetActorDataMode::GetDataFromPCGComponentOrParseComponents))
+	if (bCanGetDataFromComponent && (Settings->Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponent || Settings->Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponentOrParseComponents))
 	{
 		FoundActor->GetComponents(PCGComponents);
 
@@ -441,7 +547,7 @@ void FPCGCGetActorDataExtendedElement::ProcessActor(FPCGContext* Context, const 
 			bHasGeneratedPCGData |= !Component->GetGeneratedGraphOutput().TaggedData.IsEmpty();
 		}
 	}
-	else if (Settings->Mode == EPCGGetActorDataMode::GetDataFromProperty)
+	else if (Settings->Mode == EPCGGetDataFromActorModeExtended::GetDataFromProperty)
 	{
 		if (Settings->PropertyName != NAME_None)
 		{
@@ -450,7 +556,7 @@ void FPCGCGetActorDataExtendedElement::ProcessActor(FPCGContext* Context, const 
 	}
 
 	// Some additional validation
-	if (Settings->Mode == EPCGGetActorDataMode::GetDataFromPCGComponent && !bHasGeneratedPCGData)
+	if (Settings->Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponent && !bHasGeneratedPCGData)
 	{
 		if (bCanGetDataFromComponent)
 		{
@@ -463,7 +569,7 @@ void FPCGCGetActorDataExtendedElement::ProcessActor(FPCGContext* Context, const 
 
 		return;
 	}
-	else if (Settings->Mode == EPCGGetActorDataMode::GetDataFromProperty && !FoundProperty)
+	else if (Settings->Mode == EPCGGetDataFromActorModeExtended::GetDataFromProperty && !FoundProperty)
 	{
 		PCGE_LOG(Warning, GraphAndLog, FText::Format(LOCTEXT("ActorHasNoProperty", "Actor '{0}' does not have a property name '{1}'"), FText::FromName(FoundActor->GetFName()), FText::FromName(Settings->PropertyName)));
 		return;
@@ -518,7 +624,7 @@ void FPCGCGetActorDataExtendedElement::ProcessActor(FPCGContext* Context, const 
 	}
 	else
 	{
-		const bool bParseActor = (Settings->Mode != EPCGGetActorDataMode::GetSinglePoint);
+		const bool bParseActor = (Settings->Mode != EPCGGetDataFromActorModeExtended::GetSinglePoint);
 		FPCGDataCollection Collection = UPCGComponent::CreateActorPCGDataCollection(FoundActor, Context->SourceComponent.Get(), Settings->GetDataFilter(), bParseActor);
 		
 		Outputs += Collection.TaggedData;
