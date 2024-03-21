@@ -277,13 +277,13 @@ public:
 
 	//Toggle node caching
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, AdvancedDisplay, meta = (PCG_Overridable))
-		bool bIsCacheable = true;
+		bool bIsCacheable = false;
 
 
 
 };
 
-class UPCGCSimpleShapeElement : public FSimplePCGElement
+class UPCGCSimpleShapeElement : public IPCGElement
 {
 protected:
 

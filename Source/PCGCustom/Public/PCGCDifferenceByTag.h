@@ -56,7 +56,7 @@ public:
 		int32 NumCustomTags = 0;
 };
 
-class FPCGCDifferenceByTagElement : public FSimplePCGElement
+class FPCGCDifferenceByTagElement : public IPCGElement
 {
 protected:
 	virtual bool ExecuteInternal(FPCGContext* Context) const;
