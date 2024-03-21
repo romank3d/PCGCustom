@@ -4,8 +4,8 @@
 
 #include "PCGComponent.h"
 #include "PCGModule.h"
+//#include "Grid/PCGPartitionActor.h"
 #include "Helpers/PCGActorHelpers.h"
-
 
 #include "GameFramework/Actor.h"
 
@@ -220,7 +220,7 @@ FPCGActorSelectionKeyExtended::FPCGActorSelectionKeyExtended(FName InTag)
 FPCGActorSelectionKeyExtended::FPCGActorSelectionKeyExtended(TSubclassOf<AActor> InSelectionClass)
 {
 	Selection = EPCGActorSelection::ByClass;
-	SelectionClass = InSelectionClass;
+	ActorSelectionClass = InSelectionClass;
 	ActorFilter = EPCGActorFilter::AllWorldActors;
 }
 
@@ -254,13 +254,13 @@ bool FPCGActorSelectionKeyExtended::IsMatching(const AActor* InActor, const UPCG
 	case EPCGActorSelection::ByTag:
 		return InActor->ActorHasTag(Tag);
 	case EPCGActorSelection::ByClass:
-		return InActor->IsA(SelectionClass);
+		return InActor->IsA(ActorSelectionClass);
 	default:
 		return false;
 	}
 }
 #if WITH_EDITOR
-bool FPCGSelectionKey::operator==(const FPCGSelectionKey& InOther) const
+bool FPCGActorSelectionKey::operator==(const FPCGActorSelectionKey& InOther) const
 {
 	if (ActorFilter != InOther.ActorFilter || Selection != InOther.Selection || OptionalExtraDependency != InOther.OptionalExtraDependency)
 	{
@@ -272,7 +272,7 @@ bool FPCGSelectionKey::operator==(const FPCGSelectionKey& InOther) const
 	case EPCGActorSelection::ByTag:
 		return Tag == InOther.Tag;
 	case EPCGActorSelection::ByClass:
-		return SelectionClass == InOther.SelectionClass;
+		return ActorSelectionClass == InOther.ActorSelectionClass;
 	case EPCGActorSelection::Unknown: // Fall-through
 	case EPCGActorSelection::ByName:
 		return true;
@@ -284,11 +284,11 @@ bool FPCGSelectionKey::operator==(const FPCGSelectionKey& InOther) const
 	}
 }
 
-uint32 GetTypeHash(const FPCGSelectionKey& In)
+uint32 GetTypeHash(const FPCGActorSelectionKey& In)
 {
 	uint32 HashResult = HashCombine(GetTypeHash(In.ActorFilter), GetTypeHash(In.Selection));
 	HashResult = HashCombine(HashResult, GetTypeHash(In.Tag));
-	HashResult = HashCombine(HashResult, GetTypeHash(In.SelectionClass));
+	HashResult = HashCombine(HashResult, GetTypeHash(In.ActorSelectionClass));
 	HashResult = HashCombine(HashResult, GetTypeHash(In.OptionalExtraDependency));
 
 	return HashResult;
@@ -301,11 +301,11 @@ FText FPCGCActorSelectorExtendedSettings::GetTaskNameSuffix() const
 	{
 		if (ActorSelection == EPCGActorSelection::ByClass)
 		{
-			return FText::Format(FText::FromString(TEXT("Class: {0}")), (ActorSelectionClass.Get() ? ActorSelectionClass->GetDisplayNameText() : FText::FromName(NAME_None)));
+			return (ActorSelectionClass.Get() ? ActorSelectionClass->GetDisplayNameText() : FText::FromName(NAME_None));
 		}
 		else if (ActorSelection == EPCGActorSelection::ByTag)
 		{
-			return FText::Format(FText::FromString(TEXT("Tag: {0}")), FText::FromName(ActorSelectionTag));
+			return FText::FromName(ActorSelectionTag);
 		}
 	}
 	else if(const UEnum* EnumPtr = StaticEnum<EPCGActorFilter>())
@@ -341,14 +341,14 @@ FPCGActorSelectionKeyExtended FPCGCActorSelectorExtendedSettings::GetAssociatedK
 	}
 }
 
-FPCGCActorSelectorExtendedSettings FPCGCActorSelectorExtendedSettings::ReconstructFromKey(const FPCGSelectionKey& InKey)
+FPCGCActorSelectorExtendedSettings FPCGCActorSelectorExtendedSettings::ReconstructFromKey(const FPCGActorSelectionKey& InKey)
 {
 	FPCGCActorSelectorExtendedSettings Result{};
 	Result.ActorFilterCustom = static_cast<EPCGActorFilterExtended>(InKey.ActorFilter);
 	Result.ActorFilter = InKey.ActorFilter;
 	Result.ActorSelection = InKey.Selection;
 	Result.ActorSelectionTag = InKey.Tag;
-	Result.ActorSelectionClass = InKey.SelectionClass;
+	Result.ActorSelectionClass = InKey.ActorSelectionClass;
 
 	return Result;
 }

@@ -283,7 +283,7 @@ public:
 
 };
 
-class UPCGCSimpleShapeElement : public IPCGElement
+class UPCGCSimpleShapeElement : public FSimplePCGElement
 {
 protected:
 

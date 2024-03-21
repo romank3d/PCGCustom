@@ -4,24 +4,20 @@
 
 #include "PCGSettings.h"
 #include "PCGContext.h"
-//#include "Elements/PCGActorSelector.h"
 #include "PCGCActorSelectorExtended.h"
 #include "PCGPin.h"
-
-#include "UObject/ObjectKey.h"
 
 #include "PCGCGetActorDataExtended.generated.h"
 
 
-
 UENUM()
-enum class EPCGGetDataFromActorModeExtended : uint8
+enum class EPCGGetActorDataMode : uint8
 {
-	ParseActorComponents UMETA(Tooltip = "Parse the found actor(s) for relevant components such as Primitives, Splines, and Volumes."),
-	GetSinglePoint UMETA(Tooltip = "Produces a single point per actor with the actor transform and bounds."),
-	GetDataFromProperty UMETA(Tooltip = "Gets a data collection from an actor property."),
-	GetDataFromPCGComponent UMETA(Tooltip = "Copy generated output from other PCG components on the found actor(s)."),
-	GetDataFromPCGComponentOrParseComponents UMETA(Tooltip = "Attempts to copy generated output from other PCG components on the found actor(s), otherwise, falls back to parsing actor components.")
+	ParseActorComponents,
+	GetSinglePoint,
+	GetDataFromProperty,
+	GetDataFromPCGComponent,
+	GetDataFromPCGComponentOrParseComponents
 };
 
 
@@ -37,11 +33,11 @@ public:
 	virtual FText GetDefaultNodeTitle() const override { return NSLOCTEXT("PCGCGetActorDataExtendedSettings", "NodeTitle", "PCGC Get Actor Data Extended"); }
 	virtual FText GetNodeTooltipText() const override;
 	virtual EPCGSettingsType GetType() const override { return EPCGSettingsType::Spatial; }
-	virtual void GetStaticTrackedKeys(FPCGSelectionKeyToSettingsMap& OutKeysToSettings, TArray<TObjectPtr<const UPCGGraph>>& OutVisitedGraphs) const override;
+	virtual void GetTrackedActorKeys(FPCGActorSelectionKeyToSettingsMap& OutKeysToSettings, TArray<TObjectPtr<const UPCGGraph>>& OutVisitedGraphs) const override;
 	virtual bool HasDynamicPins() const override { return true; }
 #endif
 
-	virtual FString GetAdditionalTitleInformation() const override;
+	virtual FName AdditionalTaskName() const override;
 
 protected:
 	virtual TArray<FPCGPinProperties> InputPinProperties() const override { return TArray<FPCGPinProperties>(); }
@@ -82,19 +78,19 @@ public:
 		bool bGetSpatialData = true;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpatialData", meta = (EditCondition = "bDisplayModeSettings && bGetSpatialData", EditConditionHides, HideEditConditionToggle))
-		EPCGGetDataFromActorModeExtended Mode = EPCGGetDataFromActorModeExtended::ParseActorComponents;
+		EPCGGetActorDataMode Mode = EPCGGetActorDataMode::ParseActorComponents;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpatialData", meta = (EditCondition = "Mode == EPCGGetDataFromActorModeExtended::GetSinglePoint && bGetSpatialData", EditConditionHides))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpatialData", meta = (EditCondition = "Mode == EPCGGetActorDataMode::GetSinglePoint && bGetSpatialData", EditConditionHides))
 		bool bMergeSinglePointData = false;
 
 	// This can be set false by inheriting nodes to hide the 'Mode' property.
 	UPROPERTY(Transient, meta = (EditCondition = false, EditConditionHides))
 		bool bDisplayModeSettings = true;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpatialData", meta = (EditCondition = "Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponent || Mode == EPCGGetDataFromActorModeExtended::GetDataFromPCGComponentOrParseComponents && bGetSpatialData", EditConditionHides))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpatialData", meta = (EditCondition = "Mode == EPCGGetActorDataMode::GetDataFromPCGComponent || Mode == EPCGGetActorDataMode::GetDataFromPCGComponentOrParseComponents && bGetSpatialData", EditConditionHides))
 		TArray<FName> ExpectedPins;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpatialData", meta = (EditCondition = "Mode == EPCGGetDataFromActorModeExtended::GetDataFromProperty && bGetSpatialData", EditConditionHides))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpatialData", meta = (EditCondition = "Mode == EPCGGetActorDataMode::GetDataFromProperty && bGetSpatialData", EditConditionHides))
 		FName PropertyName = NAME_None;
 
 
