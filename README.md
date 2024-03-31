@@ -4,6 +4,10 @@ PCGCustom Plugin for UE5.4 Preview
 3. In the PCG graph node pallette, start typing "PCGC"
 4. Enjoy!
 
+Ver 1.02
+- Added "Split Points" node - a custom version of the regular "Select Points" node with "Discarded Points" pin
+- Multiple Fixes
+
 Ver 1.01
 - Added Grid shape for "SimpleShape" node
 - Added pre-configured settings for "SimpleShape" node (shape modes appear as separate nodes in the node pallette)
