@@ -312,7 +312,7 @@ bool FPCGCGetActorDataExtendedElement::ExecuteInternal(FPCGContext* InContext) c
 
 		if (Context->FoundActors.IsEmpty())
 		{
-			PCGE_LOG(Warning, GraphAndLog, LOCTEXT("NoActorFound", "No matching actor was found"));
+			PCGE_LOG(Verbose, LogOnly, LOCTEXT("NoActorFound", "No matching actor was found"));
 			return true;
 		}
 
@@ -588,7 +588,7 @@ void FPCGCGetActorDataExtendedElement::ProcessActor(FPCGContext* Context, const 
 			for (const FPCGTaggedData& TaggedData : Component->GetGeneratedGraphOutput().TaggedData)
 			{
 				FPCGTaggedData& DuplicatedTaggedData = Outputs.Add_GetRef(TaggedData);
-				DuplicatedTaggedData.Data = Cast<UPCGData>(StaticDuplicateObject(TaggedData.Data, GetTransientPackage()));
+				//DuplicatedTaggedData.Data = Cast<UPCGData>(StaticDuplicateObject(TaggedData.Data, GetTransientPackage()));
 
 				//FObjectDuplicationParameters DupParams = FObjectDuplicationParameters(Cast<UObject>(TaggedData.Data), Cast<UObject>(GetTransientPackage()));
 				//DuplicatedTaggedData.Data = Cast<UPCGData>(StaticDuplicateObjectEx(DupParams));

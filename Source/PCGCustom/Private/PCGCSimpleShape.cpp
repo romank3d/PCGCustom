@@ -20,25 +20,35 @@ FPCGElementPtr UPCGCSimpleShapeSettings::CreateElement() const
 	return MakeShared<UPCGCSimpleShapeElement>();
 }
 
-FName UPCGCSimpleShapeSettings::AdditionalTaskName() const
+//FName UPCGCSimpleShapeSettings::AdditionalTaskName() const
+//{
+//	//Set Dynamic Node Name depending on the selected shape
+//	if (const UEnum* EnumPtr = StaticEnum<EPCGCSImpleShapePointLineMode>())
+//	{
+//		return FName(FString("PCGC Simple Shape: ") + EnumPtr->GetNameStringByValue(static_cast<int>(Shape)));
+//	}
+//	else
+//	{
+//		return NAME_None;
+//	}
+//}
+
+FString UPCGCSimpleShapeSettings::GetAdditionalTitleInformation() const
 {
-	//Set Dynamic Node Name depending on the selected shape
 	if (const UEnum* EnumPtr = StaticEnum<EPCGCSImpleShapePointLineMode>())
 	{
-		return FName(FString("PCGC Simple Shape: ") + EnumPtr->GetNameStringByValue(static_cast<int>(Shape)));
+		return EnumPtr->GetNameStringByValue(static_cast<int>(Shape));
 	}
 	else
 	{
-		return NAME_None;
+		return FString();
 	}
 }
 
-
 #if WITH_EDITOR
-
 FName UPCGCSimpleShapeSettings::GetDefaultNodeName() const
 { 
-	return FName(TEXT("PCGC Simple Shape")); 
+	return FName(TEXT("PCGCSimpleShape")); 
 }
 
 FText UPCGCSimpleShapeSettings::GetDefaultNodeTitle() const
@@ -47,9 +57,8 @@ FText UPCGCSimpleShapeSettings::GetDefaultNodeTitle() const
 }
 TArray<FPCGPreConfiguredSettingsInfo> UPCGCSimpleShapeSettings::GetPreconfiguredInfo() const
 {
-	return PCGMetadataElementCommon::FillPreconfiguredSettingsInfoFromEnum<EPCGCSImpleShapePointLineMode>({ EPCGCSImpleShapePointLineMode::Shapes });
+	return PCGMetadataElementCommon::FillPreconfiguredSettingsInfoFromEnum<EPCGCSImpleShapePointLineMode>({ /*EPCGCSImpleShapePointLineMode::Shapes*/ });
 }
-
 #endif
 
 void UPCGCSimpleShapeSettings::ApplyPreconfiguredSettings(const FPCGPreConfiguredSettingsInfo& PreconfiguredInfo)

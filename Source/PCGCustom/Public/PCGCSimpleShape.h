@@ -10,7 +10,7 @@ UENUM()
 enum class EPCGCSImpleShapePointLineMode : uint16
 {
 	//Shape Modes
-	Shapes UMETA(Hidden),
+	//Shapes UMETA(Hidden),
 	Point,
 	Line,
 	Rectangle,
@@ -226,14 +226,21 @@ public:
 	virtual FText GetDefaultNodeTitle() const override;	
 	virtual FText GetNodeTooltipText() const override { return NSLOCTEXT("PCGCSimpleShapeSettings", "NodeTooltip", "Create points in a form of a certain shape"); }
 	virtual EPCGSettingsType GetType() const override { return EPCGSettingsType::Sampler; }
+	virtual bool HasFlippedTitleLines() const override { return true; }
 	virtual TArray<FPCGPreConfiguredSettingsInfo> GetPreconfiguredInfo() const override;
 	virtual bool OnlyExposePreconfiguredSettings() const override { return true; }
 #endif
 
-	virtual FName AdditionalTaskName() const override;
+//	virtual FName AdditionalTaskName() const override;
+	virtual FString GetAdditionalTitleInformation() const override;
 	virtual void ApplyPreconfiguredSettings(const FPCGPreConfiguredSettingsInfo& PreconfigureInfo) override;
 
 protected:
+
+#if WITH_EDITOR
+	virtual EPCGChangeType GetChangeTypeForProperty(const FName& InPropertyName) const override { return Super::GetChangeTypeForProperty(InPropertyName) | EPCGChangeType::Cosmetic; }
+#endif
+
 	virtual TArray<FPCGPinProperties> InputPinProperties() const override { return TArray<FPCGPinProperties>(); };
 	virtual TArray<FPCGPinProperties> OutputPinProperties() const override;
 	virtual FPCGElementPtr CreateElement() const override;
@@ -242,7 +249,7 @@ protected:
 public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings)
-		EPCGCSImpleShapePointLineMode  Shape;
+		EPCGCSImpleShapePointLineMode  Shape = EPCGCSImpleShapePointLineMode::Point;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (EditCondition = "Shape == EPCGCSImpleShapePointLineMode::Point", EditConditionHides, PCG_Overridable))
 		FPCGCSinglePointSettings PointSettings;
@@ -260,7 +267,7 @@ public:
 		FPCGCGridSettings GridSettings;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, AdvancedDisplay, meta = (PCG_Overridable))
-		FVector OriginLocation;
+		FVector OriginLocation = FVector();
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, AdvancedDisplay, meta = (ClampMin = "0.0", PCG_Overridable))
 		FVector PointExtents = FVector(10.0, 10.0, 10.0);

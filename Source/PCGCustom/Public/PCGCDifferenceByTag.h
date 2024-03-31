@@ -24,6 +24,7 @@ public:
 	virtual EPCGSettingsType GetType() const override { return EPCGSettingsType::Spatial; }
 #endif
 
+	virtual FString GetAdditionalTitleInformation() const override;
 	virtual TArray<FPCGPinProperties> InputPinProperties() const override;
 	virtual TArray<FPCGPinProperties> OutputPinProperties() const override;
 
@@ -54,6 +55,9 @@ public:
 	//Number of tags, specified after mandatory "Priority" and "ActorID" tags
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, DisplayName = "Number Of Custom Tags", meta = (EditCondition = "bUsingCustomTags", ClampMin = "0", PCG_Overridable))
 		int32 NumCustomTags = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, DisplayName = "Exclude Tags From Difference", meta = (PCG_Overridable))
+		FString ExcludeTags;
 };
 
 class FPCGCDifferenceByTagElement : public IPCGElement
