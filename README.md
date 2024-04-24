@@ -1,8 +1,15 @@
-PCGCustom Plugin for UE5.3
-1. Unpack the contents of the ZIP archive to the engine plugins folder: .../UE_5.3x/Engine/Plugins/Marketplace
+PCGCustom Plugin for UE5.4
+1. Unpack the contents of the ZIP archive to the engine plugins folder: .../UE_5.4x/Engine/Plugins/Marketplace
 2. Find PCGCustom plugin under the Installed/Other plugins category, turn it on and restart the editor
 3. In the PCG graph node pallette, start typing "PCGC"
 4. Enjoy!
+
+Ver 1.03
+- "Get Actor Data Extended" node was updated to have 5.4 features and now using native PCG API for ActorSelector
+
+Ver 1.02
+- Added "Split Points" node - a custom version of the regular "Select Points" node with "Discarded Points" pin
+- Multiple Fixes
 
 Ver 1.01
 - Added Grid shape for "SimpleShape" node
