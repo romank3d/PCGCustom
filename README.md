@@ -1,5 +1,5 @@
-PCGCustom Plugin for UE5.4
-1. Unpack the contents of the ZIP archive to the engine plugins folder: .../UE_5.4x/Engine/Plugins/Marketplace
+PCGCustom Plugin for UE 5.4
+1. Unpack the contents of the ZIP archive to the engine plugins folder: .../UE_5.4x/Engine/Plugins/Marketplace, or add it to the project's plugins directory.
 2. Find PCGCustom plugin under the Installed/Other plugins category, turn it on and restart the editor
 3. In the PCG graph node pallette, start typing "PCGC"
 4. Enjoy!
