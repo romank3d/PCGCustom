@@ -7,6 +7,8 @@ PCGCustom Plugin for UE5.4
 Ver 1.03
 - "Get Actor Data Extended" node was updated to have 5.4 features and now using native PCG API for ActorSelector
 
+Warning: If you're uprgading the plugin version in existing project and was using "Get Actor Data Extended" node in modes other than "Self", you'll need to set Actor Selector settings again.
+
 Ver 1.02
 - Added "Split Points" node - a custom version of the regular "Select Points" node with "Discarded Points" pin
 - Multiple Fixes
