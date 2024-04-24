@@ -6,6 +6,7 @@
 #include "Data/PCGPointData.h"
 #include "PCGContext.h"
 #include "Containers/Set.h"
+#include "Helpers/PCGHelpers.h"
 #include "PCGPin.h"
 
 
@@ -14,14 +15,24 @@
 #if WITH_EDITOR
 FText UPCGCDifferenceByTagSettings::GetNodeTooltipText() const
 {
-	return LOCTEXT("NodeTooltip", "Spatially subtracts the data sets based on Priority and ID tags.");
+	return LOCTEXT("NodeTooltip", "Spatially subtracts data sets based on Priority and ID tags.");
 }
 #endif
+
+FString UPCGCDifferenceByTagSettings::GetAdditionalTitleInformation() const
+{
+#if WITH_EDITOR
+	return TEXT("PCG Custom");
+#else
+	return Super::GetAdditionalTitleInformation();
+#endif
+}
 
 TArray<FPCGPinProperties> UPCGCDifferenceByTagSettings::InputPinProperties() const
 {
 	TArray<FPCGPinProperties> PinProperties;
-	PinProperties.Emplace(PCGPinConstants::DefaultInputLabel, EPCGDataType::Spatial);
+	FPCGPinProperties& InputPinProperty = PinProperties.Emplace_GetRef(PCGPinConstants::DefaultInputLabel, EPCGDataType::Spatial);
+	InputPinProperty.SetRequiredPin();
 
 	return PinProperties;
 }
@@ -64,6 +75,8 @@ bool FPCGCDifferenceByTagElement::ExecuteInternal(FPCGContext* Context) const
 			continue;
 		}
 
+		
+
 		bool bHasPointsInSource = false;
 		bool bHasPointsInDifferences = false;
 
@@ -71,6 +84,24 @@ bool FPCGCDifferenceByTagElement::ExecuteInternal(FPCGContext* Context) const
 
 		//Extract ID tag and Priority 
 		TArray<FString> InputTags = Input.Tags.Array();
+		
+		const TArray<FString> Tags = PCGHelpers::GetStringArrayFromCommaSeparatedString(Settings->ExcludeTags);
+		
+		if (!Tags.IsEmpty())
+		{
+			bool bHasCommonTags = false;
+			for (FString Tag : Tags) {
+				if (InputTags.Contains(Tag)) {
+					bHasCommonTags = true;
+					break;
+				}
+			}
+			if (bHasCommonTags) {
+				Outputs.Add(Input);
+				continue;
+			}
+		}
+
 		FString IdTag = InputTags[InputTags.Num() - 1 - NumCustomTags];
 		int32 DataSetPriority = FCString::Atoi(*InputTags[(InputTags.Num()-2 - NumCustomTags)]);
 
@@ -87,6 +118,20 @@ bool FPCGCDifferenceByTagElement::ExecuteInternal(FPCGContext* Context) const
 			}
 
 			TArray<FString> InputInnerTags = InputInner.Tags.Array();
+			
+			if (!Tags.IsEmpty())
+			{
+				bool bHasCommonTags = false;
+				for (FString Tag : Tags) {
+					if (InputInnerTags.Contains(Tag)) {
+						bHasCommonTags = true;
+						break;
+					}
+				}
+				if (bHasCommonTags) {
+					continue;
+				}
+			}
 
 			if (IdTag != InputInnerTags[InputInnerTags.Num() - 1 - NumCustomTags]) {
 				if (DataSetPriority < FCString::Atoi(*InputInnerTags[(InputInnerTags.Num() - 2 - NumCustomTags)]))
