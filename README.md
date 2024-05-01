@@ -4,6 +4,9 @@ PCGCustom Plugin for UE 5.4
 3. In the PCG graph node pallette, start typing "PCGC"
 4. Enjoy!
 
+Ver 1.04
+- Added "Discard Empty Data Sets Node" node, which removes data sets with no points, no attribute entries, or no composite data (Intersection, Difference, Union).
+
 Ver 1.03
 - "Get Actor Data Extended" node was updated to have 5.4 features and now using native PCG API for ActorSelector
 
