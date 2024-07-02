@@ -4,6 +4,9 @@ PCGCustom Plugin for UE 5.4
 3. In the PCG graph node pallette, start typing "PCGC"
 4. Enjoy!
 
+Ver 1.05
+- Added "Refresh Runtime PCG" static Blueprint Function.
+
 Ver 1.04
 - Added "Discard Empty Data Sets Node" node, which removes data sets with no points, no attribute entries, or no composite data (Intersection, Difference, Union).
 
