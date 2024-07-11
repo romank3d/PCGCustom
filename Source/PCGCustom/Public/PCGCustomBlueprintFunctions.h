@@ -15,5 +15,10 @@ class PCGCUSTOM_API UPCGCustomBlueprintFunctions : public UBlueprintFunctionLibr
 public:
 	UFUNCTION(BlueprintCallable, category = "PCGC Blueprint Functions")
 		static void RefreshRuntimePCG(UPARAM(DisplayName = "PCG Component") UPCGComponent* PCGComponent, bool Force, EPCGChangeType ChangeType = EPCGChangeType::Structural);
-	
+
+	UFUNCTION(BlueprintCallable, category = "PCGC Blueprint Functions")
+		static void SetGenerationTrigger(UPARAM(DisplayName = "PCG Component") UPCGComponent* PCGComponent, EPCGComponentGenerationTrigger GenerationTrigger);
+
+	UFUNCTION(BlueprintCallable, category = "PCGC Blueprint Functions")
+		static void ModifyActor(AActor* Actor);
 };

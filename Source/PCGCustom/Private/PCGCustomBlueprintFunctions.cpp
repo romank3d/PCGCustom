@@ -15,3 +15,17 @@ void UPCGCustomBlueprintFunctions::RefreshRuntimePCG(UPARAM(DisplayName = "") UP
 	}
 
 }
+
+void UPCGCustomBlueprintFunctions::SetGenerationTrigger(UPARAM(DisplayName = "PCG Component") UPCGComponent* PCGComponent, EPCGComponentGenerationTrigger GenerationTrigger) {
+	
+	if (PCGComponent)
+		PCGComponent->GenerationTrigger = GenerationTrigger;
+}
+
+
+void UPCGCustomBlueprintFunctions::ModifyActor(AActor* Actor) {
+#if WITH_EDITOR
+	if (Actor)
+		Actor->Modify();
+#endif
+}
