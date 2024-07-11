@@ -4,6 +4,9 @@ PCGCustom Plugin for UE 5.4
 3. In the PCG graph node pallette, start typing "PCGC"
 4. Enjoy!
 
+Ver 1.06
+- Added "Check Data" node, whic can disable branch execution if the data count, or elements count inside all data sets on the input, is 0. Can optionally discard empty data for points, attribute sets or composite data
+
 Ver 1.05
 - Added "Refresh Runtime PCG" static Blueprint Function.
 
